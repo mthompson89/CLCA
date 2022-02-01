@@ -1,19 +1,18 @@
-CLCA_bystand <- function(Cutlist, Silvi_M, per_energy, per_ef, Region1 ){
+CLCA_bystand <- function(Cutlist, Carbonsummary, per_energy, per_ef, Region1 ){
   
-  data <- mutate(Cutlist, pulpCuFt = (T..1-T..2)*TPA)
-  data <- mutate(data, sawCuFt = T..2*TPA)
-  data <- data%>%
-    left_join(sp_lookup, by ="Species")
+  #testData
+  # Cutlist <- read_csv("data/CLRC_Cutlist.csv", col_types = c("ff")) # THIS IS THE CUTLIST
+  # per_energy <- 0.5
+  # per_ef <- 0.5
+  # Region1 <- "Northeast"
+  # fvs_carbon <- read_csv("data/CLRC_Carbon.csv", col_types = c("ff")) #   THIS SHOULD BE THE CARBON SUMMARY INPUT
   
-  data$MgmtID <-  dplyr::recode(data$MgmtID,"clrc" = "clearcut", "clrp" = "clearcut_plant", "CTR" = "CTR")
+  fvs_carbon <- Carbonsummary
   
-  data <- data%>%
-    filter(MgmtID == Silvi_M)
-  
-  carbon <- fvs_carbon%>%
-    select(MgmtID, StandID, Total_Stand_Carbon,years.since.treatment, ForTyp, start.deg)%>%
-    group_by(StandID)%>%
-    filter(MgmtID == Silvi_M )                    ###THIS WILL BE AN INPUT###
+  data <- Cutlist%>%
+    mutate(pulpCuFt = (MCuFt-SCuFt)*TPA,
+           sawCuFt = SCuFt*TPA)%>%
+    left_join(sp_lookup,by = c("SpeciesFIA"="Species"))
   
   ### DATA GROUPING ####
   #calculate metric tons of carbon of Softwood Sawlogs by standID 
@@ -59,21 +58,23 @@ CLCA_bystand <- function(Cutlist, Silvi_M, per_energy, per_ef, Region1 ){
   
   #calculate total cubic meters of timber by stand ID
   
-  TCM_byStandID <- data%>% 
+  MCM_byStandID <- data%>% 
     group_by(StandID)%>%                            #group by stand ID
-    summarise(T..1 = sum(T..1), n = n())%>%         #sum the cubic feet of sawlogs by stand ID
-    mutate(TCuM_byStand = T..1 * 0.0283168)%>%      #add new column for cubic meters of saw logs
-    select(StandID, TCuM_byStand)
+    summarise(MCuFt = sum(MCuFt), n = n())%>%         #sum the cubic feet of sawlogs by stand ID
+    mutate(MCuM_byStand = MCuFt * 0.0283168)%>%      #add new column for cubic meters of saw logs
+    select(StandID, MCuM_byStand)
   
   DataByStand <- full_join(SWSL_byStandID, SWPW_byStandID,  by = "StandID")%>%
     full_join(HWSL_byStandID, by = "StandID")%>%
     full_join(HWPW_byStandID, by = "StandID")%>%
-    full_join(TCM_byStandID, by = "StandID")
+    full_join(MCM_byStandID, by = "StandID")
+  
+  
   DataByStand <- DataByStand%>%
     group_by(StandID)%>%
-    mutate(MgC_Eng = SWPW_MgC + HWPW_MgC * per_energy,             ###THIS WILL BE AN INPUT###
+    mutate(MgC_Eng = SWPW_MgC + HWPW_MgC * per_energy,               ###THIS WILL BE AN INPUT###
            MgC_Pap = SWPW_MgC + HWPW_MgC * (1- per_energy),
-           H_emiss_MgCO2e = TCuM_byStand * 0.00925,
+           H_emiss_MgCO2e = MCuM_byStand * 0.00925,
            T_emiss_MgCO2e = sum(SWSL_MgC, SWPW_MgC, HWSL_MgC, HWPW_MgC) * 0.0458,
            SW_Man_emiss_MgCO2e = SWSL_MgC* 0.461,
            HW_Man_emiss_MgCO2e = HWSL_MgC* 0.484,
@@ -137,18 +138,22 @@ CLCA_bystand <- function(Cutlist, Silvi_M, per_energy, per_ef, Region1 ){
            Manu_E_MgCO2e = case_when(year > 0  ~ 0,
                                      TRUE      ~ M_Emiss_MgCO2e))
   
-  Stand_data <- carbon%>%
+  #this needs to work with what ever the start year is and how ever long  the analyis is
+  # years since treatment = year - startyea
+  Stand_data <- fvs_carbon%>%
     left_join(DataByStand_full, by = "StandID")%>%
     group_by(StandID, year)%>%
-    mutate(TotalStandCarbon = case_when(year == 0 &  years.since.treatment == 0 ~Total_Stand_Carbon,
-                                        year == 5 &  years.since.treatment == 5 ~Total_Stand_Carbon,
-                                        year == 10 &  years.since.treatment == 10 ~Total_Stand_Carbon,
-                                        year == 15 &  years.since.treatment == 15 ~Total_Stand_Carbon,
-                                        year == 20 &  years.since.treatment == 20 ~Total_Stand_Carbon,
-                                        year == 25 &  years.since.treatment == 25 ~Total_Stand_Carbon,
-                                        year == 30 &  years.since.treatment == 30 ~Total_Stand_Carbon,
-                                        year == 35 &  years.since.treatment == 35 ~Total_Stand_Carbon,
-                                        TRUE ~ 0))
+    mutate(years.since.treatment = Year - min(Year),
+           TotalStandCarbon = case_when(year ==  0  &  years.since.treatment ==  0  ~ Total_Stand_Carbon,
+                                        year ==  5  &  years.since.treatment ==  5  ~ Total_Stand_Carbon,
+                                        year == 10  &  years.since.treatment == 10  ~ Total_Stand_Carbon,
+                                        year == 15  &  years.since.treatment == 15  ~ Total_Stand_Carbon,
+                                        year == 20  &  years.since.treatment == 20  ~ Total_Stand_Carbon,
+                                        year == 25  &  years.since.treatment == 25  ~ Total_Stand_Carbon,
+                                        year == 30  &  years.since.treatment == 30  ~ Total_Stand_Carbon,
+                                        year == 35  &  years.since.treatment == 35  ~ Total_Stand_Carbon,
+                                        TRUE ~   0))
+  
   
   CO2e_Year <- Stand_data%>%
     group_by(year)%>%
@@ -161,10 +166,10 @@ CLCA_bystand <- function(Cutlist, Silvi_M, per_energy, per_ef, Region1 ){
               mean_carbonStocks = 0-mean(TotalStandCarbon * 3.667, na.rm = TRUE)) #converted to CO2e
   
   CO2e_Year <- CO2e_Year%>%
-    mutate(CarbonStocksChange = mean_carbonStocks - lag(mean_carbonStocks, n = 5, default = 0))
+    mutate(CarbonStocksChange = mean_carbonStocks - lag(mean_carbonStocks, n = 10, default = 0))
   
   CO2e_Year <- CO2e_Year%>%
-    mutate(CSC_cont = rep((CarbonStocksChange[seq(6, length(CarbonStocksChange), 5)]/ 5), each = 5, length.out = 37))%>%
+    mutate(CSC_cont = rep((CarbonStocksChange[seq(11, length(CarbonStocksChange), 10)]/ 10), each = 10, length.out = 36))%>%
     mutate(CSC_cont = lag(CSC_cont))%>%
     mutate(CSC_cont = coalesce(CSC_cont,0))
   

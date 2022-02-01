@@ -1,24 +1,16 @@
 library(shiny)
 library(tidyverse)
-library(dplyr)
 library(readxl)
-library(ggplot2)
 library(data.table)
 library(gridExtra)
-library(tidyr)
 library(plotrix)
 library(plotly)
 library(Rcpp)
 library(vroom)
 
-
-rate_calculator <- read_csv("Table_6.csv", col_types = "fffnnnnn")
-colnames(rate_calculator)<- c("Region","Soft_Hard","saw_pulp_all",
-                              "year_post","Frac_in_use","Frac_landfil",
-                              "Frac_energy","Frac_emit")
-sp_lookup <- read_csv("species_lookupv3.csv", col_types = c("Species" = "c"))
-fvs_carbon <- read_csv("subset_carbon.csv", col_types =  c("StandID" ="f"))
-
+#Load functions and dataframes
+file.paths <- list.files("functions",pattern = "*.R$",full.names = TRUE)
+sapply(file.paths,source,.GlobalEnv)
 
 
 ui <- fluidPage(
