@@ -14,45 +14,52 @@ inuse_rate_func <- function(year,wood,product, R){
 
 cppFunction(
   'DataFrame rcppForLoop(DataFrame CO2, DataFrame Data, DataFrame Loop) {
+    
   //creating vectors for co2dataframe
-NumericVector CO2a = CO2["year"];
-NumericVector CO2b = CO2["in_use"];
-NumericVector CO2c = CO2["landfill"];
+NumericVector CO2U = CO2["in_use"];
+NumericVector CO2L = CO2["landfill"];
    
-   //creating vectors for input data
-NumericVector Dataa = Data["SWSL_MgC"];
-NumericVector Datab = Data["SWPW_MgC"];
-NumericVector Datac = Data["HWSL_MgC"];
-NumericVector Datad = Data["HWPW_MgC"];  
+   //creating vectors for input data. 
+   //DataFrame is telling C++ the type of object Data will be
+   //Below, this is saying Dataa is going to be a numeric vector
+   //and it is going to be the column labled "SWSL_MgC" from Data.
+   
+NumericVector DBS_SWSL_MgC = Data["SWSL_MgC"];
+NumericVector DBS_SWPW_MgC = Data["SWPW_MgC"];
+NumericVector DBS_HWSL_MgC = Data["HWSL_MgC"];
+NumericVector DBS_HWPW_MgC = Data["HWPW_MgC"];  
   
   //creating vectors for inuse Loop table
-NumericVector LoopUa = Loop["SWSL_inuse"];
-NumericVector LoopUb = Loop["SWPW_inuse"];
-NumericVector LoopUc = Loop["HWSL_inuse"];
-NumericVector LoopUd = Loop["HWPW_inuse"];
+NumericVector LRT_SWSL_inuse = Loop["SWSL_inuse"];
+NumericVector LRT_SWPW_inuse = Loop["SWPW_inuse"];
+NumericVector LRT_HWSL_inuse = Loop["HWSL_inuse"];
+NumericVector LRT_HWPW_inuse = Loop["HWPW_inuse"];
+
 
 
   //creating vectors for landfill Loop table
-NumericVector LoopLa = Loop["SWSL_Landfill"];
-NumericVector LoopLb = Loop["SWPW_Landfill"];
-NumericVector LoopLc = Loop["HWSL_Landfill"];
-NumericVector LoopLd = Loop["HWPW_Landfill"];
+NumericVector LRT_SWSL_Landfill = Loop["SWSL_Landfill"];
+NumericVector LRT_SWPW_Landfill = Loop["SWPW_Landfill"];
+NumericVector LRT_HWSL_Landfill = Loop["HWSL_Landfill"];
+NumericVector LRT_HWPW_Landfill = Loop["HWPW_Landfill"];
 
 
 int x = Data.nrows();
 
+  //instead of calling it outer loop object i I am calling it stand but it is the number of rows
+  //in Dataa. so start stand at 0, and go until you hit x (n rows in Data)
+  //and increase stand by 1 (stand++)
  
-  for (int stand = 0; stand < x; stand++){
+  for (int i = 0; i < x; i++){
       
-      for (int year = 0; year < 36; year++){
+      for (int j = 0; j < 42; j++){
       
-        CO2a[stand*36+year] = year;
         
-        CO2b[stand*36+year] = (Dataa[stand] * LoopUa[year]) + (Datab[stand] * LoopUb[year]) + 
-                              (Datac[stand] * LoopUc[year]) + (Datad[stand] * LoopUd[year]);
+        CO2U[i*42+j] = (DBS_SWSL_MgC[i] * LRT_SWSL_inuse[j])    + (DBS_SWPW_MgC[i] * LRT_SWPW_inuse[j]) + 
+                       (DBS_HWSL_MgC[i] * LRT_HWSL_inuse[j])    + (DBS_HWPW_MgC[i] * LRT_HWPW_inuse[j]);
                      
-        CO2c[stand*36+year] = (Dataa[stand] * LoopLa[year]) + (Datab[stand] * LoopLb[year]) +
-                              (Datac[stand] * LoopLc[year]) + (Datad[stand] * LoopLd[year]);
+        CO2L[i*42+j] = (DBS_SWSL_MgC[i] * LRT_SWSL_Landfill[j]) + (DBS_SWPW_MgC[i] * LRT_SWPW_Landfill[j]) +
+                       (DBS_HWSL_MgC[i] * LRT_HWSL_Landfill[j]) + (DBS_HWPW_MgC[i] * LRT_HWPW_Landfill[j]);
       }
   }
 
