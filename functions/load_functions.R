@@ -82,8 +82,3 @@ int x = 4280;
 
   return CO2;
 }')
-
-
-
-
-rcppForLoop(CO2_OT_bystand, DataByStandandYr, loop_rate_table)

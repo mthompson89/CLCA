@@ -1,24 +1,24 @@
 CLCA_bystand <- function(Cutlist, CarbE = TRUE,Treelist = FALSE, Carbonsummary, per_energy, per_ef, Region1 ){
   
   # # #test Inputs
-    # library(shiny)
-    # library(tidyverse)
-    # library(readxl)
-    # library(data.table)
-    # library(gridExtra)
-    # library(plotrix)
-    # library(plotly)
-    # library(Rcpp)
-    # library(vroom)
-    #  Cutlist <- read_csv("data/Shelterwood/NHShelterwood_Cutlist5yr.csv", col_types = c("ff")) # THIS IS THE CUTLIST
-    #  per_energy <- 0.5
-    #  per_ef <- 0.5
-    #  Region1 <- "Northeast"
-    #  CarbE <- TRUE
-    #  Treelist <-  FALSE
-    #  Carbonsummary <- read_csv("data/Shelterwood/NHShelterwood_Carbon5yr.csv", col_types = c("ff")) #   THIS SHOULD BE THE CARBON SUMMARY INPUT
-    #  sp_lookup <- read_csv("data/species_lookup.csv")
-    #  source("functions/load_functions.R")
+    library(shiny)
+    library(tidyverse)
+    library(readxl)
+    library(data.table)
+    library(gridExtra)
+    library(plotrix)
+    library(plotly)
+    library(Rcpp)
+    library(vroom)
+     Cutlist <- read_csv("data/Shelterwood/NHShelterwood_Cutlist5yr.csv", col_types = c("ff")) # THIS IS THE CUTLIST
+     per_energy <- 0.5
+     per_ef <- 0.5
+     Region1 <- "Northeast"
+     CarbE <- TRUE
+     Treelist <-  FALSE
+     Carbonsummary <- read_csv("data/Shelterwood/NHShelterwood_Carbon5yr.csv", col_types = c("ff")) #   THIS SHOULD BE THE CARBON SUMMARY INPUT
+     sp_lookup <- read_csv("data/species_lookup.csv")
+     source("functions/load_functions.R")
      
     
      fvs_carbon <- Carbonsummary%>%
