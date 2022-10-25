@@ -1,0 +1,154 @@
+---
+title: "Debugging"
+output: html_notebook
+---
+
+load data, libraries and functions
+```{r}
+  library(shiny)
+  library(tidyverse)
+  library(readxl)
+  library(data.table)
+  library(gridExtra)
+  library(plotrix)
+  library(plotly)
+  library(Rcpp)
+  library(vroom)
+   Cutlist <- read_csv("data/Shelterwood/NHShelterwood_Cutlist5yr.csv", col_types = c("ff")) # THIS IS THE CUTLIST
+   per_energy <- 0.5
+   per_ef <- 0.5
+   Region1 <- "Northeast"
+   CarbE <- TRUE
+   Treelist <-  FALSE
+   Carbonsummary <- read_csv("data/Shelterwood/NHShelterwood_Carbon5yr.csv", col_types = c("ff")) #   THIS SHOULD BE THE CARBON SUMMARY INPUT
+   sp_lookup <- read_csv("data/species_lookup.csv")
+   source("functions/load_functions.R")
+```
+
+
+```{r}
+   fvs_carbon <- Carbonsummary%>%
+     mutate(years = Year-min(Year))%>%
+     select(-Year)
+   
+
+   numStands <- length(unique(Cutlist$StandID))
+   
+   if(CarbE == TRUE){
+     Cutlist$t1 <- Cutlist$MCuFt
+     Cutlist$t2 <- Cutlist$SCuFt
+   }else{
+     Cutlist$t1 <- Cutlist$TCuFt
+     Cutlist$t2 <- Cutlist$MCuFt
+   }
+
+   data <- Cutlist%>%
+     mutate(pulpCuFt = (t1-t2)*TPA,
+            sawCuFt = t2*TPA,
+            years = Year-min(Year))%>%
+     left_join(sp_lookup,by = c("SpeciesFIA"="Species"))%>%
+     select(-Year)
+```
+group data by stand and year and fill in missing years
+```{r}
+ DataByStandandYr <- data%>% 
+     group_by(StandID,SW_HW,years)%>%
+     summarise(SWSL_MgC = ifelse(SW_HW == "SW",((sum(sawCuFt)*0.0283168)*0.43)*0.48,0),
+               SWPW_MgC = ifelse(SW_HW == "SW",((sum(pulpCuFt)*0.0283168)*0.43)*0.48,0),
+               HWSL_MgC = ifelse(SW_HW == "HW",((sum(sawCuFt)*0.0283168)*0.43)*0.48,0),
+               HWPW_MgC = ifelse(SW_HW == "HW",((sum(pulpCuFt)*0.0283168)*0.43)*0.48,0),
+               TCuM = sum(t1)*0.0283168)%>%
+     dplyr::distinct()%>%
+     group_by(StandID,years)%>%
+     dplyr::summarise(SWSL_MgC = sum(SWSL_MgC),
+               SWPW_MgC = sum(SWPW_MgC),
+               HWSL_MgC = sum(HWSL_MgC),
+               HWPW_MgC = sum(HWPW_MgC),
+               TCuM = sum(TCuM))
+   
+   
+   DataByStandandYr <- DataByStandandYr%>%
+     group_by(StandID,years)%>%
+     mutate(MgC_Eng = SWPW_MgC + HWPW_MgC * per_energy,               
+            MgC_Pap = SWPW_MgC + HWPW_MgC * (1- per_energy),
+            H_emiss_MgCO2e = TCuM * 0.00925,
+            T_emiss_MgCO2e = sum(SWSL_MgC, SWPW_MgC, HWSL_MgC, HWPW_MgC) * 0.0458,
+            SW_Man_emiss_MgCO2e = SWSL_MgC* 0.461,
+            HW_Man_emiss_MgCO2e = HWSL_MgC* 0.484,
+            Paper_Man_emiss_MgCO2e = MgC_Pap* 0.384)%>%
+     mutate(M_Emiss_MgCO2e = sum(SW_Man_emiss_MgCO2e, HW_Man_emiss_MgCO2e, Paper_Man_emiss_MgCO2e),
+            A_emiss_MgCO2e = MgC_Eng * (per_ef * 0.652)) 
+   
+   DataByStandandYr <-  DataByStandandYr %>% 
+     as_tibble() %>% 
+     complete(StandID,years = 0:45, fill = list(value = 0)) %>% 
+     replace(is.na(.),0) %>% 
+     distinct() 
+   
+```
+
+build rate and look up tables
+```{r}
+## rate table calculations#####
+   
+  rate_table <- rate_calculator%>%
+    select(-"Frac_energy")%>%
+    filter(year_post <= 45, Region == Region1)
+  
+  loop_rate_table <- data.frame(year = c(1:46),
+                                SWSL_inuse = integer(46),
+                                SWPW_inuse = integer(46),
+                                HWSL_inuse = integer(46),
+                                HWPW_inuse = integer(46),
+                                SWSL_Landfill = integer(46),
+                                SWPW_Landfill = integer(46),
+                                HWSL_Landfill = integer(46),
+                                HWPW_Landfill = integer(46)
+  )  
+  
+  #creating loop_rate Table for loop
+  for (i in 1:46){
+    loop_rate_table$SWSL_inuse[i] <- inuse_rate_func(i-1,"Softwood","Saw log", Region1)
+    loop_rate_table$SWPW_inuse[i] <- inuse_rate_func(i-1,"Softwood","Pulpwood", Region1)
+    loop_rate_table$HWSL_inuse[i] <- inuse_rate_func(i-1,"Hardwood","Saw log", Region1)
+    loop_rate_table$HWPW_inuse[i] <- inuse_rate_func(i-1,"Hardwood","Pulpwood", Region1)
+    
+    
+    loop_rate_table$SWSL_Landfill[i] <- landfill_rate_func(i-1,"Softwood","Saw log", Region1)
+    loop_rate_table$SWPW_Landfill[i] <- landfill_rate_func(i-1,"Softwood","Pulpwood", Region1)
+    loop_rate_table$HWSL_Landfill[i] <- landfill_rate_func(i-1,"Hardwood","Saw log", Region1)
+    loop_rate_table$HWPW_Landfill[i] <- landfill_rate_func(i-1,"Hardwood","Pulpwood", Region1)
+    
+  }
+
+
+  #shift rate table to allow for year -1
+  loop_rate_table <- loop_rate_table%>%
+    mutate(year = lag(year,1,default = 0),
+           SWSL_inuse = lag(SWSL_inuse,1,default = 0),
+           SWPW_inuse = lag(SWPW_inuse,1,default = 0),
+           HWSL_inuse = lag(HWSL_inuse,1,default = 0),
+           HWPW_inuse = lag(HWPW_inuse,1,default = 0),
+           SWSL_Landfill = lag(SWSL_Landfill,1,default = 0),
+           SWPW_Landfill = lag(SWPW_Landfill,1,default = 0),
+           HWSL_Landfill = lag(HWSL_Landfill,1,default = 0),
+           HWPW_Landfill = lag(HWPW_Landfill,1,default = 0))
+  
+  
+  # CO2_OT_bystand_orig <- data.frame(year = rep(0:45, times = numStands),
+  #                              StandID = rep(DataByStand$StandID, each = 46),
+  #                              in_use = numeric(46*nrow(DataByStand)),
+  #                              landfill = numeric(46*nrow(DataByStand)))
+  
+  CO2_OT_bystand <- data.frame(year = DataByStandandYr$years,
+                               StandID = DataByStandandYr$StandID,
+                               in_use = numeric(nrow(DataByStandandYr)),
+                               landfill = numeric(nrow(DataByStandandYr)))
+  
+```
+
+Run Rcpp
+```{r}
+ CO2_OT_bystand <- rcppForLoop(CO2_OT_bystand, DataByStandandYr, loop_rate_table)
+```
+

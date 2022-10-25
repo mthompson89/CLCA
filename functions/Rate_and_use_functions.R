@@ -1,17 +1,25 @@
 landfill_rate_func <- function(year,wood,product, R){
   rate_calculator%>%
-    filter(Region == R, Soft_Hard == wood, saw_pulp_all == product | saw_pulp_all == "All", year_post == (year))%>%
+    mutate(saw_pulp = case_when(saw_pulp_all == "All"~ "Saw log",
+                                saw_pulp_all == "Saw log" ~ "Saw log",
+                                saw_pulp_all == "Pulpwood" ~ "Pulpwood"))%>%
+    filter(Region == R, Soft_Hard == wood, saw_pulp == product, year_post == (year))%>%
     select( Frac_landfil)%>%
     as.numeric()
+  # | saw_pulp_all == "All"
 }
 
 inuse_rate_func <- function(year,wood,product, R){
   rate_calculator%>%
-    filter(Region == R, Soft_Hard == wood, saw_pulp_all == product | saw_pulp_all == "All", year_post == (year))%>%
+    mutate(saw_pulp = case_when(saw_pulp_all == "All"~ "Saw log",
+                                saw_pulp_all == "Saw log" ~ "Saw log",
+                                saw_pulp_all == "Pulpwood" ~ "Pulpwood"))%>%
+    filter(Region == R, Soft_Hard == wood, saw_pulp == product , year_post == (year))%>%
     select(Frac_in_use)%>%
     as.numeric()
+  # | saw_pulp_all == "All"
 }
-
+## c++ for loop for rate calculator ----------------
 cppFunction(
   'DataFrame rcppForLoop(DataFrame CO2, DataFrame Data, DataFrame Loop) {
     
@@ -52,16 +60,20 @@ int x = Data.nrows();
  
   for (int i = 0; i < x; i++){
       
-      for (int j = 0; j < 42; j++){
+      for (int j = 0; j < 47; j++){
       
         
-        CO2U[i*42+j] = (DBS_SWSL_MgC[i] * LRT_SWSL_inuse[j])    + (DBS_SWPW_MgC[i] * LRT_SWPW_inuse[j]) + 
+        CO2U[i*47+j] = (DBS_SWSL_MgC[i] * LRT_SWSL_inuse[j])    + (DBS_SWPW_MgC[i] * LRT_SWPW_inuse[j]) + 
                        (DBS_HWSL_MgC[i] * LRT_HWSL_inuse[j])    + (DBS_HWPW_MgC[i] * LRT_HWPW_inuse[j]);
                      
-        CO2L[i*42+j] = (DBS_SWSL_MgC[i] * LRT_SWSL_Landfill[j]) + (DBS_SWPW_MgC[i] * LRT_SWPW_Landfill[j]) +
+        CO2L[i*47+j] = (DBS_SWSL_MgC[i] * LRT_SWSL_Landfill[j]) + (DBS_SWPW_MgC[i] * LRT_SWPW_Landfill[j]) +
                        (DBS_HWSL_MgC[i] * LRT_HWSL_Landfill[j]) + (DBS_HWPW_MgC[i] * LRT_HWPW_Landfill[j]);
       }
   }
 
   return CO2;
 }')
+
+
+
+
