@@ -44,38 +44,6 @@ CLCA_bystand <- function(Cutlist, CarbE = TRUE,Treelist = FALSE, Carbonsummary, 
        select(-Year)
      
      
-    
-  
-    ### DATA GROUPING by stand ONLY ####
-     # DataByStand <- data%>%
-     #   group_by(StandID,SW_HW)%>%
-     #   summarise(SWSL_MgC = ifelse(SW_HW == "SW",((sum(sawCuFt)*0.0283168)*0.43)*0.48,0),
-     #             SWPW_MgC = ifelse(SW_HW == "SW",((sum(pulpCuFt)*0.0283168)*0.43)*0.48,0),
-     #             HWSL_MgC = ifelse(SW_HW == "HW",((sum(sawCuFt)*0.0283168)*0.43)*0.48,0),
-     #             HWPW_MgC = ifelse(SW_HW == "HW",((sum(pulpCuFt)*0.0283168)*0.43)*0.48,0),
-     #             TCuM = sum(t1)*0.0283168)%>%
-     #   unique()%>%
-     #   group_by(StandID)%>%
-     #   summarise(SWSL_MgC = sum(SWSL_MgC),
-     #             SWPW_MgC = sum(SWPW_MgC),
-     #             HWSL_MgC = sum(HWSL_MgC),
-     #             HWPW_MgC = sum(HWPW_MgC),
-     #             TCuM = sum(TCuM))
-     # 
-     # 
-     # DataByStand <- DataByStand%>%
-     #   group_by(StandID)%>%
-     #   mutate(MgC_Eng = SWPW_MgC + HWPW_MgC * per_energy,               
-     #          MgC_Pap = SWPW_MgC + HWPW_MgC * (1- per_energy),
-     #          H_emiss_MgCO2e = TCuM * 0.00925,
-     #          T_emiss_MgCO2e = sum(SWSL_MgC, SWPW_MgC, HWSL_MgC, HWPW_MgC) * 0.0458,
-     #          SW_Man_emiss_MgCO2e = SWSL_MgC* 0.461,
-     #          HW_Man_emiss_MgCO2e = HWSL_MgC* 0.484,
-     #          Paper_Man_emiss_MgCO2e = MgC_Pap* 0.384)%>%
-     #   mutate(M_Emiss_MgCO2e = sum(SW_Man_emiss_MgCO2e, HW_Man_emiss_MgCO2e, Paper_Man_emiss_MgCO2e),
-     #          A_emiss_MgCO2e = MgC_Eng * (per_ef * 0.652)) 
-     # 
-     # 
   ### DATA GROUPING by stand AND year ####
      DataByStandandYr <- data%>% 
        group_by(StandID,SW_HW,years)%>%
@@ -109,15 +77,24 @@ CLCA_bystand <- function(Cutlist, CarbE = TRUE,Treelist = FALSE, Carbonsummary, 
        as_tibble() %>% 
        complete(StandID,years = 0:45, fill = list(value = 0)) %>% 
        replace(is.na(.),0) %>% 
-       distinct() 
+       distinct() %>% 
+       mutate(SWSL_MgC = lag(SWSL_MgC,1,default = 0),
+              SWPW_MgC = lag(SWPW_MgC,1,default = 0),
+              HWSL_MgC = lag(HWSL_MgC,1,default = 0),
+              HWPW_MgC = lag(HWPW_MgC,1,default = 0),
+              TCuM                   = lag(TCuM                   ,1,default = 0),
+              MgC_Eng                = lag(MgC_Eng                ,1,default = 0),
+              MgC_Pap                = lag(MgC_Pap                ,1,default = 0),
+              H_emiss_MgCO2e         = lag(H_emiss_MgCO2e         ,1,default = 0),
+              T_emiss_MgCO2e         = lag(T_emiss_MgCO2e         ,1,default = 0),
+              SW_Man_emiss_MgCO2e    = lag(SW_Man_emiss_MgCO2e    ,1,default = 0),
+              HW_Man_emiss_MgCO2e    = lag(HW_Man_emiss_MgCO2e    ,1,default = 0),
+              Paper_Man_emiss_MgCO2e = lag(Paper_Man_emiss_MgCO2e ,1,default = 0),
+              M_Emiss_MgCO2e         = lag(M_Emiss_MgCO2e         ,1,default = 0),
+              A_emiss_MgCO2e         = lag(A_emiss_MgCO2e         ,1,default = 0))
      
     
   ## rate table calculations#####
-     
-    rate_table <- rate_calculator%>%
-      select(-"Frac_energy")%>%
-      filter("year_post" <= 45, Region == Region1)
-     
   
     loop_rate_table <- data.frame(year = c(1:46),
                                   SWSL_inuse = integer(46),
@@ -158,24 +135,24 @@ CLCA_bystand <- function(Cutlist, CarbE = TRUE,Treelist = FALSE, Carbonsummary, 
              HWSL_Landfill = lag(HWSL_Landfill,1,default = 0),
              HWPW_Landfill = lag(HWPW_Landfill,1,default = 0))
     
-    
-    # CO2_OT_bystand_orig <- data.frame(year = rep(0:45, times = numStands),
-    #                              StandID = rep(DataByStand$StandID, each = 46),
-    #                              in_use = numeric(46*nrow(DataByStand)),
-    #                              landfill = numeric(46*nrow(DataByStand)))
-    
-    CO2_OT_bystand <- data.frame(years = DataByStandandYr$years,
+    CO2_OT_bystand_yr <- data.frame(years = DataByStandandYr$years,
                                  StandID = DataByStandandYr$StandID,
                                  in_use = numeric(nrow(DataByStandandYr)),
                                  landfill = numeric(nrow(DataByStandandYr)))
     
     
-  CO2_OT_bystand <- rcppForLoop(CO2_OT_bystand, DataByStandandYr, loop_rate_table)
+    CO2_OT_bystand_yr <- rcppForLoop(CO2_OT_bystand_yr, DataByStandandYr, loop_rate_table)
   
+    standNames <- unique(DataByStandandYr$StandID)
+    CO2_OT_bystand_yr <-  do.call(rbind,lapply(standNames, function(x){
+      grp_stnd <- DataByStandandYr %>% 
+        dplyr::filter(StandID == x)
+      rcppForLoop_lapply(CO2_OT_bystand_yr, grp_stnd, loop_rate_table)
+    }))
   
   
   #build full database by stand
-  DataByStand_full <- full_join(DataByStandandYr,CO2_OT_bystand, by = c("StandID","years"))
+  DataByStand_full <- full_join(DataByStandandYr,CO2_OT_bystand_yr, by = c("StandID","years"))
   DataByStand_full <- DataByStand_full%>%
     mutate(Avoided_E_MgCO2e    = case_when(years == 0 ~ 0,
                                            years == 1 ~ A_emiss_MgCO2e,
