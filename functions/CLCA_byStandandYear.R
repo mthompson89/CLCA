@@ -1,4 +1,4 @@
-CLCA_bystand <- function(Cutlist, CarbE = TRUE,Treelist = FALSE, Carbonsummary, per_energy, per_ef, Region1 ){
+CLCA_bySY <- function(Cutlist, CarbE = TRUE,Treelist = FALSE, Carbonsummary, per_energy, per_ef, Region1 ){
   
   # # #test Inputs
     library(shiny)
@@ -10,17 +10,16 @@ CLCA_bystand <- function(Cutlist, CarbE = TRUE,Treelist = FALSE, Carbonsummary, 
     library(plotly)
     library(Rcpp)
     library(vroom)
-     Cutlist <- read_csv("data/Shelterwood/NHShelterwood_Cutlist5yr.csv", col_types = c("ff")) # THIS IS THE CUTLIST
-     per_energy <- 0.5
-     per_ef <- 0.5
-     Region1 <- "Northeast"
-     CarbE <- TRUE
-     Treelist <-  FALSE
-     Carbonsummary <- read_csv("data/Shelterwood/NHShelterwood_Carbon5yr.csv", col_types = c("ff")) #   THIS SHOULD BE THE CARBON SUMMARY INPUT
-     sp_lookup <- read_csv("data/species_lookup.csv")
-     source("functions/load_functions.R")
+     # Cutlist <- read_csv("data/Shelterwood/NHShelterwood_Cutlist5yr.csv", col_types = c("ff")) # THIS IS THE CUTLIST
+     # per_energy <- 0.5
+     # per_ef <- 0.5
+     # Region1 <- "Northeast"
+     # CarbE <- TRUE
+     # Treelist <-  FALSE
+     # Carbonsummary <- read_csv("data/Shelterwood/NHShelterwood_Carbon5yr.csv", col_types = c("ff")) #   THIS SHOULD BE THE CARBON SUMMARY INPUT
+     # sp_lookup <- read_csv("data/species_lookup.csv")
+     # source("functions/load_functions.R")
      
-    
      fvs_carbon <- Carbonsummary%>%
        mutate(years = Year-min(Year))%>%
        select(-Year)
@@ -72,39 +71,19 @@ CLCA_bystand <- function(Cutlist, CarbE = TRUE,Treelist = FALSE, Carbonsummary, 
               Paper_Man_emiss_MgCO2e = MgC_Pap* 0.384)%>%
        mutate(M_Emiss_MgCO2e = sum(SW_Man_emiss_MgCO2e, HW_Man_emiss_MgCO2e, Paper_Man_emiss_MgCO2e),
               A_emiss_MgCO2e = MgC_Eng * (per_ef * 0.652)) 
+
      
-     DataByStandandYr <-  DataByStandandYr %>% 
-       as_tibble() %>% 
-       complete(StandID,years = 0:45, fill = list(value = 0)) %>% 
-       replace(is.na(.),0) %>% 
-       distinct() %>% 
-       mutate(SWSL_MgC = lag(SWSL_MgC,1,default = 0),
-              SWPW_MgC = lag(SWPW_MgC,1,default = 0),
-              HWSL_MgC = lag(HWSL_MgC,1,default = 0),
-              HWPW_MgC = lag(HWPW_MgC,1,default = 0),
-              TCuM                   = lag(TCuM                   ,1,default = 0),
-              MgC_Eng                = lag(MgC_Eng                ,1,default = 0),
-              MgC_Pap                = lag(MgC_Pap                ,1,default = 0),
-              H_emiss_MgCO2e         = lag(H_emiss_MgCO2e         ,1,default = 0),
-              T_emiss_MgCO2e         = lag(T_emiss_MgCO2e         ,1,default = 0),
-              SW_Man_emiss_MgCO2e    = lag(SW_Man_emiss_MgCO2e    ,1,default = 0),
-              HW_Man_emiss_MgCO2e    = lag(HW_Man_emiss_MgCO2e    ,1,default = 0),
-              Paper_Man_emiss_MgCO2e = lag(Paper_Man_emiss_MgCO2e ,1,default = 0),
-              M_Emiss_MgCO2e         = lag(M_Emiss_MgCO2e         ,1,default = 0),
-              A_emiss_MgCO2e         = lag(A_emiss_MgCO2e         ,1,default = 0))
-     
-    
   ## rate table calculations#####
   
-    loop_rate_table <- data.frame(year = c(1:46),
-                                  SWSL_inuse = integer(46),
-                                  SWPW_inuse = integer(46),
-                                  HWSL_inuse = integer(46),
-                                  HWPW_inuse = integer(46),
-                                  SWSL_Landfill = integer(46),
-                                  SWPW_Landfill = integer(46),
-                                  HWSL_Landfill = integer(46),
-                                  HWPW_Landfill = integer(46)
+    loop_rate_table <- data.frame(year = c(1:47),
+                                  SWSL_inuse = integer(47),
+                                  SWPW_inuse = integer(47),
+                                  HWSL_inuse = integer(47),
+                                  HWPW_inuse = integer(47),
+                                  SWSL_Landfill = integer(47),
+                                  SWPW_Landfill = integer(47),
+                                  HWSL_Landfill = integer(47),
+                                  HWPW_Landfill = integer(47)
     )  
     
     #creating loop_rate Table for loop
@@ -135,183 +114,124 @@ CLCA_bystand <- function(Cutlist, CarbE = TRUE,Treelist = FALSE, Carbonsummary, 
              HWSL_Landfill = lag(HWSL_Landfill,1,default = 0),
              HWPW_Landfill = lag(HWPW_Landfill,1,default = 0))
     
-    CO2_OT_bystand_yr <- data.frame(years = DataByStandandYr$years,
-                                 StandID = DataByStandandYr$StandID,
-                                 in_use = numeric(nrow(DataByStandandYr)),
-                                 landfill = numeric(nrow(DataByStandandYr)))
+    CO2_OT_bystand_yr <- data.frame(years = rep(0:46, times = nrow(DataByStandandYr)),
+                                    year = rep(DataByStandandYr$years,each = 47),
+                                    StandID = rep(DataByStandandYr$StandID,each = 47),
+                                    in_use = numeric(nrow(DataByStandandYr)*47),
+                                    landfill = numeric(nrow(DataByStandandYr)*47))
     
     
-    CO2_OT_bystand_yr <- rcppForLoop(CO2_OT_bystand_yr, DataByStandandYr, loop_rate_table)
-  
-    standNames <- unique(DataByStandandYr$StandID)
-    CO2_OT_bystand_yr <-  do.call(rbind,lapply(standNames, function(x){
-      grp_stnd <- DataByStandandYr %>% 
-        dplyr::filter(StandID == x)
-      rcppForLoop_lapply(CO2_OT_bystand_yr, grp_stnd, loop_rate_table)
-    }))
-  
-  
+    CO2_OT_bystand_yr <- rcppForLoop(CO2_OT_bystand_yr, DataByStandandYr, loop_rate_table, numStands)
+    
+    if(sum(CO2_OT_bystand_yr$year) > 0){
+          
+          CO2_wide <- CO2_OT_bystand_yr %>% 
+            pivot_wider(id_cols = c(StandID,years), names_from = year,values_from = c(in_use,landfill))%>% 
+            group_by(StandID) %>% 
+            mutate(in_use_5    = lag(in_use_5, n   = 5L , default = 0),
+                   in_use_10   = lag(in_use_10,n   = 10L, default = 0),
+                   in_use_15   = lag(in_use_15,n   = 15L, default = 0),
+                   in_use_20   = lag(in_use_20,n   = 20L, default = 0),
+                   in_use_25   = lag(in_use_25,n   = 25L, default = 0),
+                   in_use_30   = lag(in_use_30,n   = 30L, default = 0),
+                   in_use_35   = lag(in_use_35,n   = 35L, default = 0),
+                   in_use_40   = lag(in_use_40,n   = 40L, default = 0),
+                   in_use_45   = lag(in_use_45,n   = 45L, default = 0),
+                   landfill_5  = lag(landfill_5 ,n = 5L,  default = 0),
+                   landfill_10 = lag(landfill_10,n = 10L, default = 0),
+                   landfill_15 = lag(landfill_15,n = 15L, default = 0),
+                   landfill_20 = lag(landfill_20,n = 20L, default = 0),
+                   landfill_25 = lag(landfill_25,n = 25L, default = 0),
+                   landfill_30 = lag(landfill_30,n = 30L, default = 0),
+                   landfill_35 = lag(landfill_35,n = 35L, default = 0),
+                   landfill_40 = lag(landfill_40,n = 40L, default = 0),
+                   landfill_45 = lag(landfill_45,n = 45L, default = 0)) %>% 
+            select(StandID,years,
+                   in_use_0,in_use_5,in_use_10,in_use_15,in_use_20,in_use_25,
+                   in_use_30,in_use_35,in_use_40,in_use_45,landfill_0,landfill_5,
+                   landfill_10,landfill_15,landfill_20,landfill_25,landfill_30,
+                   landfill_35, landfill_40,landfill_45) %>% 
+            replace(is.na(.),0)
+          
+          INLF_bsy <-  CO2_wide %>%  
+            rowwise() %>% 
+            mutate(in_use = sum(c(in_use_0,in_use_5,in_use_10,in_use_15,in_use_20,in_use_25,
+                                  in_use_30,in_use_35,in_use_40,in_use_45)),
+                   landfill = sum(c(landfill_0,landfill_5,landfill_10,landfill_15,landfill_20,
+                                    landfill_25,landfill_30,landfill_35, landfill_40,landfill_45))) %>% 
+           select(StandID,years,in_use,landfill)
+    }else{
+           INLF_bsy <- CO2_OT_bystand_yr %>% 
+             select(StandID,years,in_use,landfill)
+    }
+    
   #build full database by stand
-  DataByStand_full <- full_join(DataByStandandYr,CO2_OT_bystand_yr, by = c("StandID","years"))
-  DataByStand_full <- DataByStand_full%>%
-    mutate(Avoided_E_MgCO2e    = case_when(years == 0 ~ 0,
-                                           years == 1 ~ A_emiss_MgCO2e,
-                                           TRUE ~   0),
-           Harvest_E_MgCO2e    = case_when(years == 0 ~ 0,
-                                           years == 1 ~   H_emiss_MgCO2e,
-                                           TRUE ~   0),
-           Transport_E_MgCO2e  = case_when(years == 0 ~ 0,
-                                           years == 1 ~  T_emiss_MgCO2e, 
-                                           TRUE ~   0),
-           Manu_E_MgCO2e       = case_when(years == 0 ~ 0,
-                                           years == 1 ~  M_Emiss_MgCO2e,
-                                           TRUE ~   0),
-           in_use              = case_when(years ==  0 ~ 0,
-                                           TRUE ~ in_use),
-           landfill            = case_when(years ==   0 ~ 0,
-                                           TRUE ~ landfill))
+  DataByStand_full <- DataByStandandYr %>% 
+    select(-c(3:7)) %>% 
+    mutate(years = years+1) %>% 
+    full_join(INLF_bsy, by = c("StandID","years")) %>% 
+    replace(is.na(.),0) %>% 
+    rename(Avoided_MgCO2e   = A_emiss_MgCO2e,
+           Harvest_MgCO2e   = H_emiss_MgCO2e,
+           Transport_MgCO2e = T_emiss_MgCO2e,
+           Manu_MgCO2e      = M_Emiss_MgCO2e)
   
-  
+ #####
   
     
   # this needs to work with what ever the start year is and how ever long  the analyis is
   # years since treatment = year - start year
   # grouped by just Year to get total summary----------------
-  mean_TSC <- fvs_carbon[,c("StandID","years","Total_Stand_Carbon")]%>%
-    group_by(years)%>%
-    summarise(mean_carbonstocks = 0-mean(Total_Stand_Carbon*3.667, na.rm = TRUE))
-
-  # CO2e_Year <- DataByStand_full%>%
-  #   group_by(year)%>%
-  #   summarise(mean_inuse = 0-mean(in_use * 3.667, na.rm = TRUE),
-  #             mean_landfill = 0-mean(landfill * 3.667,na.rm = TRUE),
-  #             mean_harvest_E = mean(Harvest_E_MgCO2e,na.rm = TRUE),
-  #             mean_transport_E = mean(Transport_E_MgCO2e,na.rm = TRUE),
-  #             mean_Manufacturing_E = mean(Manu_E_MgCO2e,na.rm = TRUE),
-  #             mean_avoided_E = 0-mean(Avoided_E_MgCO2e ,na.rm = TRUE),
-  #             mean_carbonStocks = case_when(year ==  0 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years ==  0)],
-  #                                           year ==  1 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years ==  1)],
-  #                                           year ==  6 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years ==  6)],
-  #                                           year == 11 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 11)],
-  #                                           year == 16 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 16)],
-  #                                           year == 21 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 21)],
-  #                                           year == 26 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 26)],
-  #                                           year == 31 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 31)],
-  #                                           year == 36 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 36)],
-  #                                           year == 41 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 41)],
-  #                                           TRUE ~ 0))%>%
-  #   unique()%>%
-  #   ungroup()
+  CO2e_SY.1 <- fvs_carbon[,c("StandID","years","Total_Stand_Carbon")]%>%
+    mutate(years = years+1) %>% 
+    group_by(StandID,years)%>%
+    summarise(mean_carbonstocks = 0-mean(Total_Stand_Carbon*3.667)) %>% 
+    full_join(DataByStand_full, by = c("StandID","years")) %>% 
+    replace(is.na(.),0) %>% 
+    mutate(inuse_MgCO2e = 0-(in_use*3.667),
+           landfill_MgCO2e = 0-(landfill*3.667),
+           Avoided_MgCO2e = 0-Avoided_MgCO2e) %>% 
+    select(StandID,years,inuse_MgCO2e,landfill_MgCO2e,Avoided_MgCO2e,
+           Harvest_MgCO2e,Transport_MgCO2e,Manu_MgCO2e,mean_carbonstocks
+           )
+    
+ 
   
-  CO2e_Year <- DataByStand_full%>%
-    group_by(years)%>%
-    summarise(mean_inuse = 0-mean(in_use * 3.667, na.rm = TRUE),
-              mean_landfill = 0-mean(landfill * 3.667,na.rm = TRUE),
-              mean_harvest_E = mean(Harvest_E_MgCO2e,na.rm = TRUE),
-              mean_transport_E = mean(Transport_E_MgCO2e,na.rm = TRUE),
-              mean_Manufacturing_E = mean(Manu_E_MgCO2e,na.rm = TRUE),
-              mean_avoided_E = 0-mean(Avoided_E_MgCO2e ,na.rm = TRUE),
-              mean_carbonStocks = case_when(years ==  0  ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 0 )],
-                                            years ==  5  ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 5 )],
-                                            years ==  10 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 10)],
-                                            years ==  15 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 15)],
-                                            years ==  20 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 20)],
-                                            years ==  25 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 25)],
-                                            years ==  30 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 30)],
-                                            years ==  35 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 35)],
-                                            years ==  40 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 40)],
-                                            years ==  45 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 45)],
-                                            TRUE ~ 0))%>%
-    unique()%>%
-    ungroup()
-  
-  
-  #10 year increment method
-  # CO2e_Year <- DataByStand_full%>%
-  #   group_by(year)%>%
-  #   summarise(mean_inuse = 0-mean(in_use * 3.667, na.rm = TRUE),
-  #             mean_landfill = 0-mean(landfill * 3.667,na.rm = TRUE),
-  #             mean_harvest_E = mean(Harvest_E_MgCO2e,na.rm = TRUE), 
-  #             mean_transport_E = mean(Transport_E_MgCO2e,na.rm = TRUE),
-  #             mean_Manufacturing_E = mean(Manu_E_MgCO2e,na.rm = TRUE),
-  #             mean_avoided_E = 0-mean(Avoided_E_MgCO2e ,na.rm = TRUE),
-  #             mean_carbonStocks = case_when(year == 0  ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years ==  0 )],
-  #                                           year == 10 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years ==  10)],
-  #                                           year == 20 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years ==  20)],
-  #                                           year == 30 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years ==  30)],
-  #                                           year == 40 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years ==  40)],
-  #                                           year == 50 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years ==  50)],
-  #                                           TRUE ~ 0))%>%
-    # unique()%>%
-    # ungroup()
-  
-  
-  CO2e_Year <- as.data.frame(CO2e_Year)%>%
+  CO2e_SY.2 <- as.data.frame(CO2e_SY.1) %>%
+    group_by(StandID) %>% 
+    arrange(StandID,years) %>% 
     #finds diff between change in carbon after 5 years
     # mutate(CarbonStocksChange = mean_carbonStocks - lag(mean_carbonStocks, n = 5, default = 0))
-  mutate(CarbonStocksChange = mean_carbonStocks - lag(mean_carbonStocks, n = 5, default = 0)) 
+    mutate(CarbonStocksChange = mean_carbonstocks - lag(mean_carbonstocks, n = 5)) %>%
+    mutate(CarbonStocksChange = replace(CarbonStocksChange,2,mean_carbonstocks[2])) %>% 
+    replace(is.na(.),0) %>% 
+    arrange(StandID,years)
   
   
-  CO2e_Year <- CO2e_Year%>%
-    mutate(CSC_cont = rep((CarbonStocksChange[seq(from = 6, to = length(CarbonStocksChange), 5)]/ 5), each = 5, length.out = 46))%>% #divides diff by 5 and repeats
-    mutate(CSC_cont = lag(CSC_cont,1))%>% #lags by one row to offset from year 0
-    mutate(CSC_cont = coalesce(CSC_cont,0)) # fills row 1 with 0
+  CO2e_SY.3 <- CO2e_SY.2%>%
+    group_by(StandID) %>% 
+    mutate(CSC_cont = rep((CarbonStocksChange[seq(from = 7, to = length(CarbonStocksChange), 5)]/ 5),
+                          each = 5, length.out = length(years)))  %>%     #divides diff by 5 and repeats
+    mutate(CSC_cont = replace(lag(CSC_cont,2,default = 0),2,CarbonStocksChange[2]))          #lags by one row to offset from year 0
+ 
+  CO2e_SY.3[c(2),11] <- CO2e_SY.3[c(2),9] # fill in the first row with carbonstockschange year 0
   
-  CO2e_Year[c(1),10] <- CO2e_Year[c(1),9] # fill in the first row with carbonstockschange year 0
-  
-  CO2e_Year <- CO2e_Year%>%
-    mutate(ForestStocks  = cumsum(CSC_cont))%>%
-    mutate(storesum = rowSums(.[c(2,3,11)]),
-           emishsum = cumsum(rowSums(.[4:7])))%>%
-    mutate(NetCO2e  = rowSums(.[12:13]))
+  CO2e_SY.4 <- CO2e_SY.3%>%
+    group_by(StandID) %>% 
+    mutate(ForestStocks  = cumsum(CSC_cont),
+           ForestStocks = replace(ForestStocks,1,ForestStocks[2]))%>%
+    rowwise() %>% 
+    mutate(storesum = sum(c(inuse_MgCO2e,landfill_MgCO2e,Avoided_MgCO2e)),
+           emishsum = sum(c(Harvest_MgCO2e,Transport_MgCO2e,Manu_MgCO2e)))%>%
+    mutate(NetCO2e  = sum(c(storesum,emishsum,ForestStocks)))
   # CO2e_Year[1,11] <- CO2e_Year[1,9]
   
-  CO2e_Year <- CO2e_Year%>%
-    mutate(year = c(-1:(nrow(CO2e_Year)-2)))
-  
-
-# grouped by year AND Stand to get stand level summaries ---------------------
-  # mean_TSC_stand <- fvs_carbon[,c("StandID","years","Total_Stand_Carbon")]%>%
-  #   group_by(StandID,years)%>%
-  #   summarise(mean_carbonstocks = 0-mean(Total_Stand_Carbon*3.667, na.rm = TRUE))
-  # 
-  # CO2e_Stand <- DataByStand_full%>%
-  #   left_join(mean_TSC_stand, by = c("StandID", "year" = "years"))%>%
-  #   group_by(StandID,year)%>%
-  #   summarise(mean_inuse = 0-mean(in_use * 3.667, na.rm = TRUE),
-  #             mean_landfill = 0-mean(landfill * 3.667,na.rm = TRUE),
-  #             mean_harvest_E = mean(Harvest_E_MgCO2e,na.rm = TRUE), 
-  #             mean_transport_E = mean(Transport_E_MgCO2e,na.rm = TRUE),
-  #             mean_Manufacturing_E = mean(Manu_E_MgCO2e,na.rm = TRUE),
-  #             mean_avoided_E = 0-mean(Avoided_E_MgCO2e ,na.rm = TRUE),
-  #             mean_carbonStocks = mean_carbonstocks)%>%
-  # unique()%>%
-  #   ungroup()%>%
-  #   replace(is.na(.),0)
-  # 
-  # 
-  # CO2e_Stand <- as.data.frame(CO2e_Stand)%>%
-  #   group_by(StandID)%>%
-  #   #finds diff between change in carbon after 5 years
-  #   mutate(CarbonStocksChange = mean_carbonStocks - lag(mean_carbonStocks, n = 5, default = 0)) 
-  # 
-  # 
-  # CO2e_Year <- CO2e_Year%>%
-  #   mutate(CSC_cont = rep((CarbonStocksChange[seq(from = 7, to = length(CarbonStocksChange), 5)]/ 5), each = 5, length.out = 42))%>% #divides diff by 5 and repeats
-  #   mutate(CSC_cont = lag(CSC_cont,2))%>% #lags by one row to offset from year 0
-  #   mutate(CSC_cont = coalesce(CSC_cont,0)) # fills row 1 with 0
-  # 
-  # CO2e_Year[c(2),10] <- CO2e_Year[c(2),9] # fill in the first row with carbonstockschange year 0
-  # 
-  # CO2e_Year <- CO2e_Year%>%
-  #   mutate(CSC_sum  = cumsum(CSC_cont))%>%
-  #   mutate(storesum = rowSums(.[c(2,3,11)]),
-  #          emishsum = cumsum(rowSums(.[4:7])))%>%
-  #   mutate(NetCO2e  = rowSums(.[12:13]))
-  # CO2e_Year[1,11] <- CO2e_Year[1,9]
-  # 
-  # CO2e_Year <- CO2e_Year%>%
-  #   mutate(year = c(-1:(nrow(CO2e_Year)-2)))
+  CO2e_SY.5 <- CO2e_SY.4%>%
+    group_by(StandID) %>% 
+    mutate(years = c(-1:(length(years)-2))) %>% 
+    select(StandID,years,inuse_MgCO2e,landfill_MgCO2e,
+           Avoided_MgCO2e,Harvest_MgCO2e,Transport_MgCO2e,
+           Manu_MgCO2e,ForestStocks,NetCO2e)
   
 
   

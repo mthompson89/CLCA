@@ -46,12 +46,14 @@ df %>% complete(group, nesting(item_id, item_name))
 df %>% complete(group, nesting(item_id, item_name), fill = list(value1 = 0))
 
 
-plot_ly(CO2e_Year, x = ~year, y = ~mean_inuse, type = "bar", name = "In Use")%>%
-  add_trace(y = ~mean_landfill, name = "landfill")%>%
-  add_trace(y = ~mean_harvest_E, name = "Harvest Emissions")%>%
-  add_trace(y = ~mean_transport_E, name = "Transport Emissions")%>%
-  add_trace(y = ~mean_Manufacturing_E, name = "Manufacturing Emissions")%>%
-  add_trace(y = ~mean_avoided_E, name = "Avoided Emissions")%>%
+plotdata <- CO2e_SY.5[which(CO2e_SY.5$StandID == "0033198304000200300163"),]
+
+plot_ly(plotdata, x = ~years, y = ~inuse_MgCO2e, type = "bar", name = "In Use")%>%
+  add_trace(y = ~landfill_MgCO2e, name = "landfill")%>%
+  add_trace(y = ~Harvest_MgCO2e, name = "Harvest Emissions")%>%
+  add_trace(y = ~Transport_MgCO2e, name = "Transport Emissions")%>%
+  add_trace(y = ~Manu_MgCO2e, name = "Manufacturing Emissions")%>%
+  add_trace(y = ~Avoided_MgCO2e, name = "Avoided Emissions")%>%
   add_trace(y = ~ForestStocks, name = "Forest Stocks")%>%
   add_trace(y = ~NetCO2e, type = "scatter", mode= "lines",
             line = list(color = "red"),

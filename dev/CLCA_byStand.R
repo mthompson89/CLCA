@@ -10,13 +10,13 @@ CLCA_bystand <- function(Cutlist, CarbE = TRUE,Treelist = FALSE, Carbonsummary, 
   library(plotly)
   library(Rcpp)
   library(vroom)
-  Cutlist <- read_csv("data/Shelterwood/NHShelterwood_Cutlist5yr.csv", col_types = c("ff")) # THIS IS THE CUTLIST
+  Cutlist <- read_csv("data/CLRC_Cutlist.csv", col_types = c("ff")) # THIS IS THE CUTLIST
   per_energy <- 0.5
   per_ef <- 0.5
   Region1 <- "Northeast"
   CarbE <- TRUE
   Treelist <-  FALSE
-  Carbonsummary <- read_csv("data/Shelterwood/NHShelterwood_Carbon5yr.csv", col_types = c("ff")) #   THIS SHOULD BE THE CARBON SUMMARY INPUT
+  Carbonsummary <- read_csv("data/CLRC_Carbon.csv", col_types = c("ff")) #   THIS SHOULD BE THE CARBON SUMMARY INPUT
   sp_lookup <- read_csv("data/species_lookup.csv")
   source("functions/load_functions.R")
   
@@ -126,7 +126,7 @@ CLCA_bystand <- function(Cutlist, CarbE = TRUE,Treelist = FALSE, Carbonsummary, 
     
     
     
-    CO2_OT_bystand <- rcppForLoopStand(CO2_OT_bystand, DataByStand, loop_rate_table_stand)
+    CO2_OT_bystand <- rcppForLoopStand(CO2_OT_bystand, DataByStand, loop_rate_table_stand, numStands)
     
     
     

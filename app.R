@@ -64,6 +64,7 @@ ui <- fluidPage(
                          tags$div("Please Wait While App is Working", id = "UpdateAnimate", class = "loading dots")),
       
       # main barplot
+        uiOutput('dropdown'),
         plotlyOutput("MainPlot"),
       
       # clca table
@@ -111,7 +112,7 @@ server <- function(input, output) {
   # Change max import size
     options(shiny.maxRequestSize=1000*1024^2)
 
-  # create reactive objects to be used in the functions below  
+  # create reactive objects to be used in the functions below 
           CutlistTable <- reactive({
               file <- input$cutlist
               
@@ -132,7 +133,7 @@ server <- function(input, output) {
           
           clcatable <- reactive({
             
-            CLCA_bystand(CutlistTable(), 
+            CLCA_bySY(CutlistTable(), 
                          CarbE = input$carbonE,
                          Treelist = input$Treelist,
                          Carbonsummary = CSTable(),
@@ -143,17 +144,23 @@ server <- function(input, output) {
     
 
   # use inputs to render bar graph of carbon
- 
+    output$dropdown <- renderUI({
+      req(CutlistTable())
+      selectInput("StandID","Choose Stand",unique(clcatable()$StandID))
+    }) 
+
     output$MainPlot <- renderPlotly({
       if(input$Treelist == FALSE){
 
+        plotData <- clcatable() %>% 
+          filter(StandID == input$StandID)
         
-        barfig <- plot_ly(clcatable(), x = ~year, y = ~mean_inuse, type = "bar", name = "In Use")%>%
-          add_trace(y = ~mean_landfill, name = "landfill")%>%
-          add_trace(y = ~mean_harvest_E, name = "Harvest Emissions")%>%
-          add_trace(y = ~mean_transport_E, name = "Transport Emissions")%>%
-          add_trace(y = ~mean_Manufacturing_E, name = "Manufacturing Emissions")%>%
-          add_trace(y = ~mean_avoided_E, name = "Avoided Emissions")%>%
+        barfig <- plot_ly(plotData, x = ~years, y = ~inuse_MgCO2e, type = "bar", name = "In Use")%>%
+          add_trace(y = ~landfill_MgCO2e, name = "landfill")%>%
+          add_trace(y = ~Harvest_MgCO2e, name = "Harvest Emissions")%>%
+          add_trace(y = ~Transport_MgCO2e, name = "Transport Emissions")%>%
+          add_trace(y = ~Manu_MgCO2e, name = "Manufacturing Emissions")%>%
+          add_trace(y = ~Avoided_MgCO2e, name = "Avoided Emissions")%>%
           add_trace(y = ~ForestStocks, name = "Forest Stocks")%>%
           add_trace(y = ~NetCO2e, type = "scatter", mode= "lines",
                     line = list(color = "red"),
@@ -175,25 +182,7 @@ server <- function(input, output) {
                               tickcolor = 'rgb(127,127,127)',
                               ticks = 'outside',
                               zeroline = FALSE), barmode = "group")
-      }else{
-        barfig <- plot_ly(clcatable(), x = ~year, y = ~ForestStocks, type = "bar")%>%
-          layout(barmode = "relative",  paper_bgcolor='rgb(255,255,255)', plot_bgcolor='rgb(229,229,229)',
-                 xaxis = list(title = "Years",
-                              gridcolor = 'rgb(255,255,255)',
-                              showgrid = TRUE,
-                              showline = FALSE,
-                              showticklabels = TRUE,
-                              tickcolor = 'rgb(127,127,127)',
-                              ticks = 'outside',
-                              zeroline = FALSE),
-                 yaxis = list(title = "Forest Stocks Mean CO2e (Mg)",
-                              gridcolor = 'rgb(255,255,255)',
-                              showgrid = TRUE,
-                              showline = FALSE,
-                              showticklabels = TRUE,
-                              tickcolor = 'rgb(127,127,127)',
-                              ticks = 'outside',
-                              zeroline = FALSE), barmode = "group")
+        
         
         
       
