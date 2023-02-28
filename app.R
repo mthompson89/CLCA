@@ -9,7 +9,7 @@ library(Rcpp)
 library(vroom)
 
 #Load functions and dataframes
-file.paths <- list.files("functions",pattern = "*.R$",full.names = TRUE)
+file.paths <- c("functions/CLCA_byStandandYear.R","functions/CLCA_output.R","functions/load_functions.R")
 sapply(file.paths,source,.GlobalEnv)
 
 
@@ -208,7 +208,7 @@ server <- function(input, output) {
         
         paste("clca_data","csv", sep=".")
       },
-      content = function(file) {
+      content = function(file) { 
 
         write.table(clcatable(), file, sep = ",", row.names = FALSE)
       }

@@ -1,4 +1,4 @@
-CLCA_bySY <- function(Cutlist, CarbE = TRUE,Treelist = FALSE, Carbonsummary, per_energy, per_ef, Region1 ){
+CLCA_bySY <- function(Cutlist, CarbE = TRUE,Treelist = FALSE, Carbonsummary, per_energy , per_ef, Region1 ){
   
   # # #test Inputs
     library(shiny)
@@ -10,20 +10,27 @@ CLCA_bySY <- function(Cutlist, CarbE = TRUE,Treelist = FALSE, Carbonsummary, per
     library(plotly)
     library(Rcpp)
     library(vroom)
-     # Cutlist <- read_csv("data/Shelterwood/NHShelterwood_Cutlist5yr.csv", col_types = c("ff")) # THIS IS THE CUTLIST
+     # Cutlist <- read_csv("Z:/FVS_OutputFiles/Hardwoods/CTRH/FVS_Cutlist_East.csv", col_types = c("ff")) # THIS IS THE CUTLIST
      # per_energy <- 0.5
      # per_ef <- 0.5
      # Region1 <- "Northeast"
      # CarbE <- TRUE
      # Treelist <-  FALSE
-     # Carbonsummary <- read_csv("data/Shelterwood/NHShelterwood_Carbon5yr.csv", col_types = c("ff")) #   THIS SHOULD BE THE CARBON SUMMARY INPUT
+     # Carbonsummary <- read_csv("Z:/FVS_OutputFiles/HrWd/CTRH/FVS_Carbon.csv", col_types = c("ff")) #   THIS SHOULD BE THE CARBON SUMMARY INPUT
      # sp_lookup <- read_csv("data/species_lookup.csv")
      # source("functions/load_functions.R")
      
      fvs_carbon <- Carbonsummary%>%
+       filter(Year > 2022) %>% 
        mutate(years = Year-min(Year))%>%
-       select(-Year)
+       select(-Year) %>% 
+       dplyr::filter(years <=46)
      
+     # c_test <- fvs_carbon %>% 
+     #   group_by(StandID) %>% 
+     #   mutate(n = n()) %>% 
+     #   dplyr::filter(n < 10)
+     # 
   
      numStands <- length(unique(Cutlist$StandID))
      
@@ -125,41 +132,44 @@ CLCA_bySY <- function(Cutlist, CarbE = TRUE,Treelist = FALSE, Carbonsummary, per
     
     if(sum(CO2_OT_bystand_yr$year) > 0){
           
-          CO2_wide <- CO2_OT_bystand_yr %>% 
-            pivot_wider(id_cols = c(StandID,years), names_from = year,values_from = c(in_use,landfill))%>% 
-            group_by(StandID) %>% 
-            mutate(in_use_5    = lag(in_use_5, n   = 5L , default = 0),
-                   in_use_10   = lag(in_use_10,n   = 10L, default = 0),
-                   in_use_15   = lag(in_use_15,n   = 15L, default = 0),
-                   in_use_20   = lag(in_use_20,n   = 20L, default = 0),
-                   in_use_25   = lag(in_use_25,n   = 25L, default = 0),
-                   in_use_30   = lag(in_use_30,n   = 30L, default = 0),
-                   in_use_35   = lag(in_use_35,n   = 35L, default = 0),
-                   in_use_40   = lag(in_use_40,n   = 40L, default = 0),
-                   in_use_45   = lag(in_use_45,n   = 45L, default = 0),
-                   landfill_5  = lag(landfill_5 ,n = 5L,  default = 0),
-                   landfill_10 = lag(landfill_10,n = 10L, default = 0),
-                   landfill_15 = lag(landfill_15,n = 15L, default = 0),
-                   landfill_20 = lag(landfill_20,n = 20L, default = 0),
-                   landfill_25 = lag(landfill_25,n = 25L, default = 0),
-                   landfill_30 = lag(landfill_30,n = 30L, default = 0),
-                   landfill_35 = lag(landfill_35,n = 35L, default = 0),
-                   landfill_40 = lag(landfill_40,n = 40L, default = 0),
-                   landfill_45 = lag(landfill_45,n = 45L, default = 0)) %>% 
-            select(StandID,years,
-                   in_use_0,in_use_5,in_use_10,in_use_15,in_use_20,in_use_25,
-                   in_use_30,in_use_35,in_use_40,in_use_45,landfill_0,landfill_5,
-                   landfill_10,landfill_15,landfill_20,landfill_25,landfill_30,
-                   landfill_35, landfill_40,landfill_45) %>% 
-            replace(is.na(.),0)
-          
-          INLF_bsy <-  CO2_wide %>%  
-            rowwise() %>% 
-            mutate(in_use = sum(c(in_use_0,in_use_5,in_use_10,in_use_15,in_use_20,in_use_25,
-                                  in_use_30,in_use_35,in_use_40,in_use_45)),
-                   landfill = sum(c(landfill_0,landfill_5,landfill_10,landfill_15,landfill_20,
-                                    landfill_25,landfill_30,landfill_35, landfill_40,landfill_45))) %>% 
-           select(StandID,years,in_use,landfill)
+      
+      CO2_wide <- CO2_OT_bystand_yr %>% 
+        pivot_wider(id_cols = c(StandID,years), names_from = year,values_from = c(in_use,landfill))
+      cnames <- colnames(CO2_wide)
+      CO2_wide2 <- CO2_wide%>% 
+        group_by(StandID) %>%
+        mutate(in_use_5    = ifelse("in_use_5"  %in% cnames,lag(in_use_5, n   = 5L , default = 0),0),
+               in_use_10   = ifelse("in_use_10" %in% cnames,lag(in_use_10,n   = 10L, default = 0),0),
+               in_use_15   = ifelse("in_use_15" %in% cnames,lag(in_use_15,n   = 15L, default = 0),0),
+               in_use_20   = ifelse("in_use_20" %in% cnames,lag(in_use_20,n   = 20L, default = 0),0),
+               in_use_25   = ifelse("in_use_25" %in% cnames,lag(in_use_25,n   = 25L, default = 0),0),
+               in_use_30   = ifelse("in_use_30" %in% cnames,lag(in_use_30,n   = 30L, default = 0),0),
+               in_use_35   = ifelse("in_use_35" %in% cnames,lag(in_use_35,n   = 35L, default = 0),0),
+               in_use_40   = ifelse("in_use_40" %in% cnames,lag(in_use_40,n   = 40L, default = 0),0),
+               in_use_45   = ifelse("in_use_45" %in% cnames,lag(in_use_45,n   = 45L, default = 0),0),
+               landfill_5  = ifelse("landfill_5" %in%  cnames, lag(landfill_5 ,n = 5L,  default = 0),0),
+               landfill_10 = ifelse("landfill_10" %in% cnames,lag(landfill_10,n = 10L, default = 0),0),
+               landfill_15 = ifelse("landfill_15" %in% cnames,lag(landfill_15,n = 15L, default = 0),0),
+               landfill_20 = ifelse("landfill_20" %in% cnames,lag(landfill_20,n = 20L, default = 0),0),
+               landfill_25 = ifelse("landfill_25" %in% cnames,lag(landfill_25,n = 25L, default = 0),0),
+               landfill_30 = ifelse("landfill_30" %in% cnames,lag(landfill_30,n = 30L, default = 0),0),
+               landfill_35 = ifelse("landfill_35" %in% cnames,lag(landfill_35,n = 35L, default = 0),0),
+               landfill_40 = ifelse("landfill_40" %in% cnames,lag(landfill_40,n = 40L, default = 0),0),
+               landfill_45 = ifelse("landfill_45" %in% cnames,lag(landfill_45,n = 45L, default = 0),0)) %>% 
+        select(StandID,years,
+               in_use_0,in_use_5,in_use_10,in_use_15,in_use_20,in_use_25,
+               in_use_30,in_use_35,in_use_40,in_use_45,landfill_0,landfill_5,
+               landfill_10,landfill_15,landfill_20,landfill_25,landfill_30,
+               landfill_35, landfill_40,landfill_45) %>% 
+        replace(is.na(.),0)
+      
+      INLF_bsy <-  CO2_wide2%>%  
+        rowwise() %>% 
+        mutate(in_use = sum(c(in_use_0,in_use_5,in_use_10,in_use_15,in_use_20,in_use_25,
+                              in_use_30,in_use_35,in_use_40,in_use_45)),
+               landfill = sum(c(landfill_0,landfill_5,landfill_10,landfill_15,landfill_20,
+                                landfill_25,landfill_30,landfill_35, landfill_40,landfill_45))) %>% 
+        select(StandID,years,in_use,landfill)
     }else{
            INLF_bsy <- CO2_OT_bystand_yr %>% 
              select(StandID,years,in_use,landfill)
@@ -207,10 +217,17 @@ CLCA_bySY <- function(Cutlist, CarbE = TRUE,Treelist = FALSE, Carbonsummary, per
     replace(is.na(.),0) %>% 
     arrange(StandID,years)
   
-  
+  # grp100 <- CO2e_SY.2 %>% 
+  #   filter(StandID == "0033200206010200900418" )
+  # 
+  # grp1 <- CO2e_SY.2 %>% 
+  #   group_by(StandID) %>% 
+  #   mutate(n = n()) %>% 
+  #   filter(n == 48)
+  # 
   CO2e_SY.3 <- CO2e_SY.2%>%
     group_by(StandID) %>% 
-    mutate(CSC_cont = rep((CarbonStocksChange[seq(from = 7, to = length(CarbonStocksChange), 5)]/ 5),
+    mutate(CSC_cont = rep((CarbonStocksChange[seq(from = 8, to = length(CarbonStocksChange), by = 5)]/ 5),
                           each = 5, length.out = length(years)))  %>%     #divides diff by 5 and repeats
     mutate(CSC_cont = replace(lag(CSC_cont,2,default = 0),2,CarbonStocksChange[2]))          #lags by one row to offset from year 0
  
@@ -236,44 +253,90 @@ CLCA_bySY <- function(Cutlist, CarbE = TRUE,Treelist = FALSE, Carbonsummary, per
 
   
    }else{
-     mean_TSC <- fvs_carbon[,c("StandID","years","Total_Stand_Carbon")]%>%
-       group_by(years)%>%
-       summarise(mean_carbonstocks = 0-mean(Total_Stand_Carbon*3.667, na.rm = TRUE))
      
-     TreelistData <- data.frame(year = c(0:41))
+     carbon_temp <- data.frame(StandID = rep(unique(fvs_carbon$StandID),each = 56),
+                      years = rep(1:56,times = length(unique(fvs_carbon$StandID))))
      
-     CO2e_Year <- TreelistData%>%
-       group_by(year)%>%
-       summarise(mean_carbonStocks = case_when(year ==  0 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years ==  0)],
-                                               year ==  1 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years ==  1)],
-                                               year ==  6 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years ==  6)],
-                                               year == 11 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 11)],
-                                               year == 16 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 16)],
-                                               year == 21 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 21)],
-                                               year == 26 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 26)],
-                                               year == 31 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 31)],
-                                               year == 36 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 36)],
-                                               year == 41 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 41)],
-                                               TRUE ~ 0))
+     CO2e_SY.1 <- fvs_carbon[,c("StandID","years","Total_Stand_Carbon")]%>%
+       mutate(years = years+1) %>% 
+       group_by(StandID,years)%>%
+       summarise(mean_carbonstocks = 0-mean(Total_Stand_Carbon*3.667))
+     CO2e_SY.1.5 <- CO2e_SY.1 %>% 
+       group_by(StandID) %>% 
+       complete(years = min(0):max(years))
      
-     CO2e_Year <- as.data.frame(CO2e_Year)%>%
+     
+     CO2e_SY.2 <- as.data.frame(CO2e_SY.1.5)%>%
+       group_by(StandID) %>% 
+       arrange(StandID,years) %>% 
        #finds diff between change in carbon after 5 years
-       mutate(CarbonStocksChange = mean_carbonStocks - lag(mean_carbonStocks, n = 5, default = 0)) 
+       #mutate(CarbonStocksChange = mean_carbonStocks - lag(mean_carbonStocks, n = 5, default = 0))
+       mutate(CarbonStocksChange = mean_carbonstocks - lag(mean_carbonstocks, n = 5)) %>%
+       mutate(CarbonStocksChange = replace(CarbonStocksChange,2,mean_carbonstocks[2])) %>% 
+       replace(is.na(.),0) %>% 
+       arrange(StandID,years)
      
      
-     CO2e_Year <- CO2e_Year%>%
-       mutate(CSC_cont = rep((CarbonStocksChange[seq(from = 7, to = length(CarbonStocksChange), 5)]/ 5), each = 5, length.out = 42))%>% #divides diff by 5 and repeats
-       mutate(CSC_cont = lag(CSC_cont,2))%>% #lags by one row to offset from year 0
-       mutate(CSC_cont = coalesce(CSC_cont,0)) # fills row 1 with 0
+     CO2e_SY.3 <- CO2e_SY.2%>%
+       group_by(StandID) %>% 
+       mutate(CSC_cont = rep((CarbonStocksChange[seq(from = 7, to = length(CarbonStocksChange), 5)]/ 5),
+                             each = 5, length.out = length(years)))  %>%     #divides diff by 5 and repeats
+       mutate(CSC_cont = replace(lag(CSC_cont,2,default = 0),2,CarbonStocksChange[2]))          #lags by one row to offset from year 0
      
-     CO2e_Year[c(2),4] <- CO2e_Year[c(2),3] # fill in the first row with carbonstockschange year 0
+     CO2e_SY.3[c(1),4] <- CO2e_SY.3[c(2),3] # fill in the first row with carbonstockschange year 0
      
-     CO2e_Year <- CO2e_Year%>%
-       mutate(ForestStocks  = cumsum(CSC_cont))
+     CO2e_SY.4 <- CO2e_SY.3%>%
+       group_by(StandID) %>% 
+       mutate(ForestStocks  = cumsum(CSC_cont),
+              ForestStocks = replace(ForestStocks,1,ForestStocks[2]))
+     # CO2e_Year[1,11] <- CO2e_Year[1,9]
      
-     CO2e_Year[1,5] <- CO2e_Year[1,3]
+     CO2e_SY.5 <- CO2e_SY.4%>%
+       group_by(StandID) %>% 
+       mutate(Year = c(-1:(length(years)-2)),
+              MgmtID = "LItG") %>% 
+       select(StandID,MgmtID,Year,ForestStocks)
+#####
+     # mean_TSC <- fvs_carbon[,c("StandID","years","Total_Stand_Carbon")]%>%
+     #   group_by(years)%>%
+     #   summarise(mean_carbonstocks = 0-mean(Total_Stand_Carbon*3.667, na.rm = TRUE))
+     # 
+     # 
+     # 
+     # TreelistData <- data.frame(year = c(0:41))
+     # 
+     # CO2e_Year <- TreelistData%>%
+     #   group_by(year)%>%
+     #   summarise(mean_carbonStocks = case_when(year ==  0 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years ==  0)],
+     #                                           year ==  1 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years ==  1)],
+     #                                           year ==  6 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years ==  6)],
+     #                                           year == 11 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 11)],
+     #                                           year == 16 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 16)],
+     #                                           year == 21 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 21)],
+     #                                           year == 26 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 26)],
+     #                                           year == 31 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 31)],
+     #                                           year == 36 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 36)],
+     #                                           year == 41 ~ mean_TSC$mean_carbonstocks[which(mean_TSC$years == 41)],
+     #                                           TRUE ~ 0))
+     # 
+     # CO2e_Year <- as.data.frame(CO2e_Year)%>%
+     #   #finds diff between change in carbon after 5 years
+     #   mutate(CarbonStocksChange = mean_carbonStocks - lag(mean_carbonStocks, n = 5, default = 0)) 
+     # 
+     # 
+     # CO2e_Year <- CO2e_Year%>%
+     #   mutate(CSC_cont = rep((CarbonStocksChange[seq(from = 7, to = length(CarbonStocksChange), 5)]/ 5), each = 5, length.out = 42))%>% #divides diff by 5 and repeats
+     #   mutate(CSC_cont = lag(CSC_cont,2))%>% #lags by one row to offset from year 0
+     #   mutate(CSC_cont = coalesce(CSC_cont,0)) # fills row 1 with 0
+     # 
+     # CO2e_Year[c(2),4] <- CO2e_Year[c(2),3] # fill in the first row with carbonstockschange year 0
+     # 
+     # CO2e_Year <- CO2e_Year%>%
+     #   mutate(ForestStocks  = cumsum(CSC_cont))
+#####     
+     # CO2e_SY.5[1,5] <- CO2e_SY.5[1,3]
      
-     print(CO2e_Year[,c("year","ForestStocks")])
+     # print(CO2e_SY.4[,c("year","ForestStocks")])
      
    }
   
